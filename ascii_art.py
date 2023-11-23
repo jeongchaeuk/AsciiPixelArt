@@ -1,12 +1,24 @@
 import pygame as pg
 import numpy as np
+from numba import njit
 import pygame.gfxdraw
 import cv2
 
 
+@njit(fastmath=True)
+def accelerate_conversion(image, width, height, color_coeff, step):
+    array_of_values = []
+    for x in range(0, width, step):
+        for y in range(0, height, step):
+            r, g, b = image[x, y] // color_coeff
+            if r + g + b:
+                array_of_values.append(((r, g, b), (x, y)))
+    return array_of_values
+
+
 class ArtConvert:
     def __init__(self, path='video/test.mp4', font_size=12, color_lvl=8,
-                 pixel_size=10):
+                 pixel_size=1):
         """
         :param path:
         :param font_size:
@@ -45,17 +57,28 @@ class ArtConvert:
             if self.is_video:
                 self.image, _ = self.get_image()
 
-            color_indices = self.image // self.COLOR_COEFF
-            for x in range(0, self.WIDTH, self.PIXEL_SIZE):
-                for y in range(0, self.HEIGHT, self.PIXEL_SIZE):
-                    color_key = tuple(color_indices[x, y])
-                    if not sum(color_key):
-                        continue
-                    color = tuple(self.PALETTE[color_key])
-                    pg.gfxdraw.box(
-                            self.surface,
-                            (x, y, self.PIXEL_SIZE, self.PIXEL_SIZE),
-                            color)
+            array_of_values = accelerate_conversion(self.image,
+                                                    self.WIDTH, self.HEIGHT,
+                                                    self.COLOR_COEFF,
+                                                    self.PIXEL_SIZE)
+            for color_key, (x, y) in array_of_values:
+                color = tuple(self.PALETTE[color_key])
+                pg.gfxdraw.box(
+                        self.surface,
+                        (x, y, self.PIXEL_SIZE, self.PIXEL_SIZE),
+                        color)
+
+        # color_indices = self.image // self.COLOR_COEFF
+            # for x in range(0, self.WIDTH, self.PIXEL_SIZE):
+            #     for y in range(0, self.HEIGHT, self.PIXEL_SIZE):
+            #         color_key = tuple(color_indices[x, y])
+            #         if not sum(color_key):
+            #             continue
+            #         color = tuple(self.PALETTE[color_key])
+            #         pg.gfxdraw.box(
+            #                 self.surface,
+            #                 (x, y, self.PIXEL_SIZE, self.PIXEL_SIZE),
+            #                 color)
         else:
             if self.is_video:
                 self.image, self.gray_image = self.get_image()
