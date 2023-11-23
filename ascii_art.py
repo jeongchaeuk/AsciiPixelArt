@@ -19,8 +19,6 @@ class ArtConvert:
         self.CHAR_STEP = int(font_size * .6)
         self.RENDERED_ASCII_CHARS = [self.font.render(char, False, 'white')
                                      for char in self.ASCII_CHARS]
-        for index, surf in enumerate(self.RENDERED_ASCII_CHARS):
-            print(self.ASCII_CHARS[index], surf.get_size())
 
     def draw_converted_image(self):
         char_indices = self.image // self.ASCII_COEFF
@@ -30,7 +28,6 @@ class ArtConvert:
                 if char_index:
                     self.surface.blit(self.RENDERED_ASCII_CHARS[char_index],
                                       (x, y))
-
 
     def get_image(self):
         self.cv2_image = cv2.imread(self.path)  # numpy array
@@ -48,16 +45,30 @@ class ArtConvert:
         self.surface.fill('black')
         self.draw_converted_image()
 
+    def save(self):
+        pygame_image = pg.surfarray.array3d(self.surface)
+        cv2_img = cv2.transpose(pygame_image)
+        cv2.imwrite('output/img/converted_image.jpg', cv2_img)
+
     def run(self):
         while True:
-            for e in pg.event.get():
-                if e.type == pg.QUIT:
-                    exit()
-
+            self.process_events()
             self.draw()
             pg.display.set_caption(f'pygame fps={self.clock.get_fps():.2f}')
             pg.display.flip()
             self.clock.tick()
+
+    def process_events(self):
+        for event in pg.event.get():
+            match event.type:
+                case pg.QUIT:
+                    exit()
+                case pg.KEYDOWN:
+                    match event.key:
+                        case pg.K_s:
+                            self.save()
+                        case pg.K_ESCAPE:
+                            exit()
 
 
 if __name__ == '__main__':
