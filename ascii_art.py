@@ -5,8 +5,8 @@ import cv2
 
 
 class ArtConvert:
-    def __init__(self, path='img/car.jpg', font_size=12, color_lvl=8,
-                 pixel_size=7):
+    def __init__(self, path='video/test.mp4', font_size=12, color_lvl=8,
+                 pixel_size=10):
         """
         :param path:
         :param font_size:
@@ -18,6 +18,8 @@ class ArtConvert:
         """
         pg.init()
         self.path = path
+        self.capture = cv2.VideoCapture(self.path)
+        self.is_video = True
         self.PIXEL_SIZE = pixel_size
         self.COLOR_LVL = color_lvl
         self.cv2_image = None
@@ -40,6 +42,9 @@ class ArtConvert:
 
     def draw_converted_image(self):
         if self.PIXEL_SIZE:
+            if self.is_video:
+                self.image, _ = self.get_image()
+
             color_indices = self.image // self.COLOR_COEFF
             for x in range(0, self.WIDTH, self.PIXEL_SIZE):
                 for y in range(0, self.HEIGHT, self.PIXEL_SIZE):
@@ -52,6 +57,9 @@ class ArtConvert:
                             (x, y, self.PIXEL_SIZE, self.PIXEL_SIZE),
                             color)
         else:
+            if self.is_video:
+                self.image, self.gray_image = self.get_image()
+
             char_indices = self.gray_image // self.ASCII_COEFF
             color_indices = self.image // self.COLOR_COEFF
             for x in range(0, self.WIDTH, self.CHAR_STEP):
@@ -102,7 +110,12 @@ class ArtConvert:
         return palette, color_coeff
 
     def get_image(self):
-        self.cv2_image = cv2.imread(self.path)  # numpy array
+        if self.is_video:
+            ret, self.cv2_image = self.capture.read()
+            if not ret:
+                exit()
+        else:
+            self.cv2_image = cv2.imread(self.path)  # numpy array
         transposed_image = cv2.transpose(self.cv2_image)
         image = cv2.cvtColor(transposed_image, cv2.COLOR_BGR2RGB)
 
