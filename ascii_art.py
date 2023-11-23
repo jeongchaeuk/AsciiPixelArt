@@ -17,8 +17,8 @@ def accelerate_conversion(image, width, height, color_coeff, step):
 
 
 class ArtConvert:
-    def __init__(self, path='video/test.mp4', font_size=12, color_lvl=8,
-                 pixel_size=1):
+    def __init__(self, path='video/shorts1.mp4', font_size=12, color_lvl=8,
+                 pixel_size=7, is_gray=False):
         """
         :param path:
         :param font_size:
@@ -32,6 +32,7 @@ class ArtConvert:
         self.path = path
         self.capture = cv2.VideoCapture(self.path)
         self.is_video = True
+        self.is_gray = is_gray
         self.PIXEL_SIZE = pixel_size
         self.COLOR_LVL = color_lvl
         self.cv2_image = None
@@ -42,8 +43,10 @@ class ArtConvert:
         self.clock = pg.time.Clock()
 
         if not self.PIXEL_SIZE:
-            # self.ASCII_CHARS = ' .",:;!~+-xmo*#W&8@'  # black_white ascii
-            self.ASCII_CHARS = ' ixzao*#MW&8%B@$'  # for color ascii.
+            if self.is_gray:
+                self.ASCII_CHARS = ' .",:;!~+-xmo*#W&8@'  # black_white ascii
+            else:
+                self.ASCII_CHARS = ' ixzao*#MW&8%B@$'  # for color ascii.
             self.ASCII_COEFF = 255 // (len(self.ASCII_CHARS) - 1)
             self.font = pg.font.SysFont('Courier', font_size, bold=True)
             self.CHAR_STEP = int(font_size * .6)
@@ -51,6 +54,26 @@ class ArtConvert:
                                          for char in self.ASCII_CHARS]
 
         self.PALETTE, self.COLOR_COEFF = self.create_palette()
+
+        self.rec_fps = 25
+        self.record = False
+        self.recorder = cv2.VideoWriter('output/video.mp4',
+                                        cv2.VideoWriter.fourcc(*'mp4v'),
+                                        self.rec_fps, self.RES)
+
+    def get_frame(self):
+        frame = pg.surfarray.array3d(self.surface)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        return cv2.transpose(frame)
+
+    def record_frame(self):
+        if self.record:
+            frame = self.get_frame()
+            self.recorder.write(frame)
+            cv2.imshow('Frame', frame)
+            if cv2.waitKey(1) & 0xFF == 27:
+                self.record = not self.record
+                cv2.destroyAllWindows()
 
     def draw_converted_image(self):
         if self.PIXEL_SIZE:
@@ -83,15 +106,25 @@ class ArtConvert:
             if self.is_video:
                 self.image, self.gray_image = self.get_image()
 
-            char_indices = self.gray_image // self.ASCII_COEFF
-            color_indices = self.image // self.COLOR_COEFF
-            for x in range(0, self.WIDTH, self.CHAR_STEP):
-                for y in range(0, self.HEIGHT, self.CHAR_STEP):
-                    char_index = char_indices[x, y]
-                    if char_index:
-                        char = self.ASCII_CHARS[char_index]
-                        color = tuple(color_indices[x, y])
-                        self.surface.blit(self.PALETTE[char][color], (x, y))
+            if self.is_gray:
+                char_indices = self.gray_image // self.ASCII_COEFF
+                for x in range(0, self.WIDTH, self.CHAR_STEP):
+                    for y in range(0, self.HEIGHT, self.CHAR_STEP):
+                        char_index = char_indices[x, y]
+                        if char_index:
+                            self.surface.blit(
+                                    self.RENDERED_ASCII_CHARS[char_index],
+                                    (x, y))
+            else:
+                char_indices = self.gray_image // self.ASCII_COEFF
+                color_indices = self.image // self.COLOR_COEFF
+                for x in range(0, self.WIDTH, self.CHAR_STEP):
+                    for y in range(0, self.HEIGHT, self.CHAR_STEP):
+                        char_index = char_indices[x, y]
+                        if char_index:
+                            char = self.ASCII_CHARS[char_index]
+                            color = tuple(color_indices[x, y])
+                            self.surface.blit(self.PALETTE[char][color], (x, y))
 
     def create_palette(self):
         """
@@ -155,9 +188,9 @@ class ArtConvert:
         cv2.imshow('opencv', resized_cv2_image)
 
     def draw(self):
-        self.draw_cv2_image()
         self.surface.fill('black')
         self.draw_converted_image()
+        # self.draw_cv2_image()
 
     def save(self):
         pygame_image = pg.surfarray.array3d(self.surface)
@@ -168,6 +201,7 @@ class ArtConvert:
     def run(self):
         while True:
             self.process_events()
+            self.record_frame()
             self.draw()
             pg.display.set_caption(
                     f'pygame fps={self.clock.get_fps():.2f} '
@@ -184,6 +218,8 @@ class ArtConvert:
                     match event.key:
                         case pg.K_s:
                             self.save()
+                        case pg.K_r:
+                            self.record = not self.record
                         case pg.K_UP:
                             self.PIXEL_SIZE += 1
                             if self.PIXEL_SIZE > 20:
@@ -197,5 +233,5 @@ class ArtConvert:
 
 
 if __name__ == '__main__':
-    app = ArtConvert()
+    app = ArtConvert(pixel_size=0, is_gray=True)
     app.run()
