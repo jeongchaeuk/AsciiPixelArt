@@ -243,6 +243,8 @@ fabric.properties
 *.wav
 *.ogg
 *.mp3
+*.mp4
+*.mov
 *.dat
 /*.json
 output/
